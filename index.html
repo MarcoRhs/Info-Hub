@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Horse Ownership Cost &amp; Time Estimator</title>
+  <style>
+    :root { --bg:#0f1a14; --card:#122019; --text:#eef2ef; --muted:#a9b6ad; --accent:#36b199; }
+
+    /* Reliable sizing & no overflow in grids */
+    *,*::before,*::after{ box-sizing: border-box; }
+    body{margin:0;background:var(--bg);color:var(--text);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    .wrap{max-width:680px;margin:0 auto;padding:24px}
+    .card{background:linear-gradient(180deg,#15261e,#0f1a14);border:1px solid #1f382d;border-radius:16px;padding:20px;margin:14px 0;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+    h1{font-size:22px;margin:0 0 8px}
+    h2{font-size:16px;margin:18px 0 10px;color:var(--muted)}
+    label{display:block;margin:10px 0 6px}
+
+    input,select,button{font:inherit}
+    input,select{
+      width:100%;
+      max-width:100%;
+      padding:10px;
+      border-radius:10px;
+      border:1px solid #244437;
+      background:#0d1914;
+      color:var(--text);
+    }
+
+    /* Grid that never overlaps */
+    .row{
+      display:grid;
+      grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+      gap:14px;
+      align-items:start;
+    }
+    .row > *{ min-width:0; }
+    .row + .row{ margin-top:6px; }
+
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
+    .chip{background:#0a1612;border:1px solid #1f382d;border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
+    .btns{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{background:var(--accent);border:0;border-radius:12px;color:#08251e;padding:10px 14px;font-weight:700;cursor:pointer}
+    .btn.secondary{background:#173328;color:#a9f0de}
+    .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .muted{color:var(--muted);font-size:12px}
+    details{margin-top:8px;color:var(--muted)}
+    .foot{font-size:12px;color:var(--muted);margin-top:8px}
+
+    @media (max-width:480px){
+      .row{ grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <h1>Horse Ownership Cost &amp; Time Estimator</h1>
+    <p class="muted">Editable estimates. No email required. Tweak any number to fit your local reality.</p>
+    <div class="btns"><button id="resetAll" class="btn secondary" type="button">Reset all</button></div>
+  </div>
+
+  <div class="card" id="inputs">
+    <h2>1) Region &amp; Currency</h2>
+    <div class="row">
+      <div>
+        <label>Country</label>
+        <select id="country">
+          <option value="DE">DE (Germany)</option>
+          <option value="EU" selected>EU (Eurozone)</option>
+          <option value="UK">UK</option>
+          <option value="US">US</option>
+        </select>
+      </div>
+      <div>
+        <label>Currency symbol</label>
+        <input id="currency" value="€"/>
+      </div>
+    </div>
+
+    <h2>1b) Region detail &amp; local adjuster</h2>
+    <div class="row">
+      <div>
+        <label>Region (Bundesland / UK region / US state bucket)</label>
+        <select id="regionDetail"></select>
+      </div>
+      <div>
+        <label>Urbanity (affects labour/rent-driven services)</label>
+        <select id="urbanBand">
+          <option value="0.96">Rural (–4%)</option>
+          <option value="1.00" selected>Town (baseline)</option>
+          <option value="1.06">City (+6%)</option>
+          <option value="1.12">Capital / prime (+12%)</option>
+        </select>
+      </div>
+    </div>
+    <p id="regionNote" class="muted"></p>
+
+    <h2>2) Boarding</h2>
+    <div class="row">
+      <div>
+        <label>Boarding type</label>
+        <select id="boardType">
+          <option value="pasture">Pasture</option>
+          <option value="partial">Partial / DIY</option>
+          <option value="full" selected>Full care</option>
+        </select>
+      </div>
+      <div>
+        <label class="inline">Board (monthly)
+          <input id="boardMonthly" type="number" placeholder="e.g., 600" style="flex:1"/>
+        </label>
+        <div class="inline">
+          <label><input type="checkbox" id="lockBoard"> Lock my price</label>
+          <button id="useSuggested" class="btn secondary" type="button">Use suggested</button>
+        </div>
+        <p id="boardSuggest" class="muted"></p>
+      </div>
+    </div>
+
+    <h2>3) Farrier</h2>
+    <div class="row">
+      <div><label>Cost per visit</label><input id="farrierVisit" type="number" placeholder="e.g., 90"/></div>
+      <div><label>Interval (weeks)</label><input id="farrierWeeks" type="number" value="8"/></div>
+    </div>
+
+    <h2>4) Vet &amp; Dental (annual)</h2>
+    <div class="row">
+      <div><label>Routine vet (annual)</label><input id="vetAnnual" type="number" placeholder="e.g., 250"/></div>
+      <div><label>Dental (annual)</label><input id="dentalAnnual" type="number" placeholder="e.g., 120"/></div>
+    </div>
+
+    <h2>5) Hay / Forage</h2>
+    <div class="row">
+      <div><label>Horse weight (kg)</label><input id="horseKg" type="number" value="550"/></div>
+      <div><label>Forage % BW/day</label><input id="pctBW" type="text" value="2.0"/></div>
+    </div>
+    <div class="row">
+      <div><label>Bale weight (kg)</label><input id="baleKg" type="number" value="20"/></div>
+      <div><label>Price per bale</label><input id="balePrice" type="number" placeholder="e.g., 7"/></div>
+    </div>
+
+    <h2>6) Optional training / lessons (monthly)</h2>
+    <div class="row">
+      <div class="inline">
+        <label><input id="includeTraining" type="checkbox"/> Include training/lessons</label>
+      </div>
+      <div></div>
+    </div>
+    <div id="trainingFields" style="display:none">
+      <div class="row">
+        <div><label>Lessons per month</label><input id="lessonsCount" type="number" value="0"/></div>
+        <div><label>Price per lesson</label><input id="lessonPrice" type="number" placeholder="e.g., 55"/></div>
+      </div>
+    </div>
+
+    <h2>6b) Misc</h2>
+    <div class="row">
+      <div><label>Other monthly (insurance, transport, etc.)</label><input id="miscMonthly" type="number" value="0"/></div>
+      <div><label>Emergency reserve (% of annual)</label><input id="reservePct" type="number" value="10"/></div>
+    </div>
+
+    <h2>7) VAT / Sales Tax</h2>
+    <div class="row">
+      <div>
+        <label><input type="checkbox" id="applyVat" /> Apply VAT/tax to services that charge it</label>
+      </div>
+      <div>
+        <label>VAT / tax % (auto-suggested)</label>
+        <input id="vatPct" type="number" step="0.1" placeholder="e.g., 19" />
+      </div>
+    </div>
+    <p id="vatHint" class="muted"></p>
+
+    <h2>7b) One-time setup</h2>
+    <div class="row">
+      <div><label>Tack starter kit</label><input id="tackOneTime" type="number" placeholder="e.g., 650"/></div>
+      <div><label>PPE (pre-purchase exam)</label><input id="ppeOneTime" type="number" placeholder="e.g., 450"/></div>
+    </div>
+
+    <h2>8) Time</h2>
+    <div class="row">
+      <div><label>Hours per week</label><input id="hoursWeek" type="number" value="4"/></div>
+      <div>
+        <label>Preset</label>
+        <select id="timePreset">
+          <option value="">Custom</option>
+          <option value="2">Light (1–3 h/wk)</option>
+          <option value="4" selected>Moderate (3–5 h/wk)</option>
+          <option value="6">Heavy (5–7 h/wk)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="results">
+    <h2>Results</h2>
+    <div class="chips" id="chips"></div>
+    <p id="totals" style="font-size:18px;font-weight:700;margin-top:10px"></p>
+    <div class="btns">
+      <button id="downloadCsv" class="btn">Download CSV</button>
+      <button id="downloadPdf" class="btn">Download PDF</button>
+    </div>
+    <details>
+      <summary>How we calculated this</summary>
+      <ul>
+        <li>Location = <em>country baseline × region factor × urbanity</em> (public price-level indices). US: BEA RPP; UK: ONS regional price levels.</li>
+        <li>Board suggestions are ranges adjusted by that factor (DE: full livery often €300–€400; up to ~€600 near big cities).</li>
+        <li>Hay/month (kg) ≈ horseKg × (forage%/100) × 30; cost via bale weight &amp; price.</li>
+        <li>Farrier/month ≈ (cost/visit) × (12 ÷ (weeks/4.345)).</li>
+        <li>Vet &amp; Dental/month = annual/12. Educational estimates; confirm locally.</li>
+      </ul>
+      <div class="foot">Last updated: <span id="lastUpdated"></span></div>
+    </details>
+  </div>
+
+  <div class="foot">
+    Notes: We use client-side jsPDF/AutoTable to render tables and your logo, with images embedded as **data URLs** (base64). :contentReference[oaicite:4]{index=4}
+  </div>
+</div>
+
+<!-- Export libs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.2/jspdf.umd.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" crossorigin="anonymous"></script>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+  const num = (el) => { const v=(typeof el==='string'?el:el.value||'').toString().replace(',','.'); const n=parseFloat(v); return isNaN(n)?0:n; };
+
+  // ===== BRAND =====
+  const BRAND = { name: 'ManeMap', url: 'https://manemap.app' };
+  // Simple placeholder logo; swap this string if you have a branded image.
+  const LOGO_DATA_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9oOxX9sAAAAASUVORK5CYII=';
+
+  // ===== CONFIG / PRESETS (unchanged logic) =====
+  const currencyFor = c => ({ DE:'€', EU:'€', UK:'£', US:'$' }[c] || '€');
+  const vatInfo = {
+    DE: { rate: 0.19,  label: 'DE standard VAT 19% (check local rules).' },
+    UK: { rate: 0.20,  label: 'UK standard VAT 20% (check local rules).' },
+    EU: { rate: 0.216, label: 'EU average standard VAT ≈21.6% (varies by country).' },
+    US: { rate: 0.00,  label: 'US: no national VAT; enter local sales tax if applicable.' }
+  };
+  const regionFactors = {
+    DE: {'Baden-Württemberg':1.04,'Bayern (Bavaria)':1.05,'Berlin':1.04,'Brandenburg':0.96,'Bremen':0.99,'Hamburg':1.06,'Hessen (Hesse)':1.03,'Mecklenburg-Vorpommern':0.94,'Niedersachsen (Lower Saxony)':0.97,'Nordrhein-Westfalen (NRW)':1.01,'Rheinland-Pfalz':0.98,'Saarland':0.98,'Sachsen (Saxony)':0.95,'Sachsen-Anhalt':0.94,'Schleswig-Holstein':0.99,'Thüringen (Thuringia)':0.95},
+    UK: {'London':1.07,'England (excl London)':0.987,'Scotland':1.004,'Wales':0.985,'Northern Ireland':0.977},
+    US: {'High (≈1.10): CA, DC, HI, NJ, MA, NY':1.10,'Above avg (≈1.05): CT, MD, WA, AK, CO':1.05,'Average (≈1.00): VA, OR, AZ, IL, MN, NH, RI, VT, UT, PA, DE, FL, NC, GA, MI, NV, TX':1.00,'Below avg (≈0.95): OH, WI, MO, NE, NM, TN, SC, IN, KS, ID, KY, IA, OK':0.95,'Low (≈0.90): AR, MS, AL, WV, LA, ND, SD, MT, WY':0.90},
+    EU: {'Eurozone (average)':1.00}
+  };
+  const boardPresets = {
+    DE:{ pasture:{low:200,likely:280,high:350}, partial:{low:250,likely:330,high:420}, full:{low:300,likely:450,high:600} },
+    EU:{ pasture:{low:200,likely:260,high:350}, partial:{low:240,likely:320,high:420}, full:{low:250,likely:400,high:550} },
+    UK:{ pasture:{low:120,likely:180,high:260}, partial:{low:160,likely:260,high:380}, full:{low:300,likely:550,high:900} },
+    US:{ pasture:{low:250,likely:325,high:425}, partial:{low:300,likely:450,high:600}, full:{low:300,likely:550,high:700} }
+  };
+  const baseDefaults = {
+    DE:{ farrierVisit:90, vetAnnual:250, dentalAnnual:120, balePrice:7 },
+    EU:{ farrierVisit:85, vetAnnual:240, dentalAnnual:110, balePrice:7 },
+    UK:{ farrierVisit:55, vetAnnual:220, dentalAnnual:140, balePrice:5.5 },
+    US:{ farrierVisit:60, vetAnnual:300, dentalAnnual:150, balePrice:6 }
+  };
+
+  let suggestedBoard = {low:0,likely:0,high:0};
+
+  function fillRegionOptions(){
+    const c=$('country').value, box=$('regionDetail'), map = regionFactors[c] || { 'Local (manual)':1.00 };
+    box.innerHTML=''; Object.keys(map).forEach(name=>{ const opt=document.createElement('option'); opt.value=map[name]; opt.textContent=name; box.appendChild(opt); });
+  }
+  function currentLocalFactor(){ const rf=num($('regionDetail').value); const uf=num($('urbanBand').value); return (rf||1)*(uf||1); }
+
+  function makeSuggestion(){
+    const c=$('country').value, t=$('boardType').value, cur=$('currency').value||'€';
+    const preset=boardPresets[c] && boardPresets[c][t], factor=currentLocalFactor()||1;
+    if(preset){
+      suggestedBoard={ low:Math.round(preset.low*factor), likely:Math.round(preset.likely*factor), high:Math.round(preset.high*factor) };
+      $('boardSuggest').textContent=`Suggested: ${cur}${suggestedBoard.likely} (range ${cur}${suggestedBoard.low}–${cur}${suggestedBoard.high})`;
+      $('boardMonthly').placeholder=`${suggestedBoard.low}–${suggestedBoard.high}`;
+      window.__boardRangeChip=`${cur}${suggestedBoard.low}–${cur}${suggestedBoard.high}`;
+    }else{ suggestedBoard={low:0,likely:0,high:0}; $('boardSuggest').textContent=''; window.__boardRangeChip=''; }
+  }
+  function applySuggestionIfUnlocked(){ if(!$('lockBoard').checked){ $('boardMonthly').value=suggestedBoard.likely||''; localStorage['boardMonthly']=$('boardMonthly').value; } }
+
+  const fields=['country','currency','regionDetail','urbanBand','boardType','boardMonthly','farrierVisit','farrierWeeks','vetAnnual','dentalAnnual','horseKg','pctBW','baleKg','balePrice','miscMonthly','reservePct','tackOneTime','ppeOneTime','hoursWeek','timePreset','vatPct'];
+  fields.forEach(k=>{ const n=$(k); if(localStorage[k]) n.value=localStorage[k]; n.addEventListener('input',()=>{localStorage[k]=n.value; compute();}); n.addEventListener('change',()=>{localStorage[k]=n.value; compute();}); });
+
+  $('country').addEventListener('change', e=>{
+    const c=e.target.value, cur=currencyFor(c); $('currency').value=cur; localStorage['currency']=cur;
+    const v=vatInfo[c]||{rate:0,label:''}; $('vatPct').value=(v.rate*100).toFixed(1); $('vatHint').textContent=v.label;
+    fillRegionOptions();
+    $('regionNote').textContent = (c==='DE') ? 'South/urban areas trend higher than North/East; Munich region often top tier.'
+      : (c==='UK') ? 'London generally higher than UK average (ONS regional price levels).'
+      : (c==='US') ? 'State buckets reflect BEA Regional Price Parity ranges.'
+      : 'Eurozone baseline; adjust with Urbanity if you live near a capital.';
+    prefillOtherDefaults(); makeSuggestion(); applySuggestionIfUnlocked(); compute();
+  });
+  ['regionDetail','urbanBand','boardType'].forEach(id=>$(id).addEventListener('change',()=>{makeSuggestion();applySuggestionIfUnlocked();compute();}));
+  $('useSuggested').addEventListener('click', ()=>{ $('boardMonthly').value=suggestedBoard.likely||''; compute(); });
+  $('lockBoard').addEventListener('change', ()=>{ if(!$('lockBoard').checked){ applySuggestionIfUnlocked(); } compute(); });
+  $('includeTraining').addEventListener('change', e=>{ $('trainingFields').style.display=e.target.checked?'block':'none'; if(!e.target.checked){ $('lessonsCount').value=0; $('lessonPrice').value=''; } compute(); });
+  $('resetAll').addEventListener('click', ()=>{ localStorage.clear(); location.reload(); });
+  $('timePreset').addEventListener('change', e=>{ if(e.target.value){ $('hoursWeek').value=e.target.value; localStorage['hoursWeek']=e.target.value; } compute(); });
+
+  function prefillOtherDefaults(){ const c=$('country').value, d=baseDefaults[c]||baseDefaults['EU'], factor=currentLocalFactor()||1;
+    const setIfEmpty=(id,base)=>{ if(!$(id).value && base!=null){ $(id).value=Math.round(base*factor); } };
+    setIfEmpty('farrierVisit',d.farrierVisit); setIfEmpty('vetAnnual',d.vetAnnual); setIfEmpty('dentalAnnual',d.dentalAnnual); setIfEmpty('balePrice',d.balePrice);
+  }
+  function monthlyHay(){ const kg=num($('horseKg')), pct=num($('pctBW'))/100, baleKg=num($('baleKg')), balePrice=num($('balePrice'));
+    const monthKg=kg*pct*30; const cost=(!baleKg||!balePrice)?0:(monthKg/baleKg)*balePrice; return {kg:monthKg, cost}; }
+  function farrierPerMonth(){ const visit=num($('farrierVisit')), weeks=num($('farrierWeeks'))||8, months=weeks/4.345; return months?(visit/months):0; }
+
+  function compute(){
+    const cur=$('currency').value||'€';
+    const board=num($('boardMonthly')), vetM=num($('vetAnnual'))/12, dentalM=num($('dentalAnnual'))/12, hay=monthlyHay(), farrierM=farrierPerMonth();
+    const includeTraining=$('includeTraining').checked, lessonsM=includeTraining?(num($('lessonsCount'))*num($('lessonPrice'))):0, miscM=num($('miscMonthly'));
+    const monthlyLikely=board+vetM+dentalM+hay.cost+farrierM+lessonsM+miscM, monthlyLow=monthlyLikely*0.9, monthlyHigh=monthlyLikely*1.15, annualLikely=monthlyLikely*12;
+    const applyVat=$('applyVat').checked, vatRate=Math.max(0,num($('vatPct'))/100), taxableMonthly=board+farrierM+(includeTraining?lessonsM:0)+miscM;
+    const monthlyVat=applyVat?(taxableMonthly*vatRate):0, monthlyLikelyWithVat=monthlyLikely+monthlyVat, annualLikelyWithVat=monthlyLikelyWithVat*12;
+    const oneTime=num($('tackOneTime'))+num($('ppeOneTime')), reserve=(num($('reservePct'))/100)*annualLikely, hours=num($('hoursWeek'));
+    const factor=currentLocalFactor()||1, localPct=((factor-1)*100);
+    const boardRange=window.__boardRangeChip?` • board example range: ${window.__boardRangeChip}`:''; const curFmt=v=>cur+Number(v).toFixed(0);
+
+    $('chips').innerHTML=[
+      `<span class="chip">Local adjuster: ${localPct>=0?'+':''}${localPct.toFixed(0)}%</span>`,
+      ['Board',board],['Farrier',farrierM],['Vet',vetM],['Dental',dentalM],['Hay',hay.cost], includeTraining?['Training',lessonsM]:null, ['Misc',miscM]
+    ].filter(Boolean).map(x=>typeof x==='string'?x:`<span class="chip">${x[0]}: ${cur}${(x[1]||0).toFixed(0)}</span>`).join('');
+
+    $('totals').innerHTML = `
+      <div>Monthly (pre-VAT): ${curFmt(monthlyLow)} – <b>${curFmt(monthlyLikely)}</b> – ${curFmt(monthlyHigh)}${boardRange}</div>
+      ${applyVat?`<div>Monthly (with VAT): <b>${curFmt(monthlyLikelyWithVat)}</b> • Annual (with VAT): <b>${curFmt(annualLikelyWithVat)}</b></div>`:`<div>Annual (pre-VAT): <b>${curFmt(annualLikely)}</b></div>`}
+      <div>One-time: <b>${curFmt(oneTime)}</b> • Reserve (~${$('reservePct').value}%): ${curFmt(reserve)} • Time: <b>${hours.toFixed(1)} h/week</b></div>
+    `;
+
+    $('lastUpdated').textContent = new Date().toISOString().slice(0,10);
+    window.__calcState = {cur,board,farrierM,vetM,dentalM,hayCost:hay.cost,lessonsM,miscM,monthlyLow,monthlyLikely,monthlyHigh,annualLikely,oneTime,reserve,hours,monthlyLikelyWithVat,annualLikelyWithVat};
+  }
+
+  // CSV (unchanged)
+  function toCSV(){
+    const s=window.__calcState||{}, c=s.cur||'€';
+    const rows=[['Category','Monthly ('+c+')'],['Board',s.board||0],['Farrier',s.farrierM||0],['Vet',s.vetM||0],['Dental',s.dentalM||0],['Hay',s.hayCost||0],['Training',s.lessonsM||0],['Misc',s.miscM||0],[],['Monthly Low (pre-VAT)',s.monthlyLow||0],['Monthly Likely (pre-VAT)',s.monthlyLikely||0],['Monthly High (pre-VAT)',s.monthlyHigh||0],['Annual Likely (pre-VAT)',s.annualLikely||0],['Monthly Likely (with VAT)',s.monthlyLikelyWithVat||0],['Annual (with VAT)',s.annualLikelyWithVat||0],['One-time',s.oneTime||0],['Reserve',s.reserve||0],['Time (h/week)',s.hours||0]];
+    return rows.map(r=>r.join(',')).join('\n');
+  }
+  document.getElementById('downloadCsv').addEventListener('click', ()=>{ const blob=new Blob([toCSV()],{type:'text/csv;charset=utf-8'}); saveAs(blob,'horse-cost-estimate.csv'); });
+
+  // ===== NICE PDF with brand, tables, footer & disclaimer =====
+  document.getElementById('downloadPdf').addEventListener('click', ()=>{
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'pt', format:'a4' }); // A4 + points for predictable sizing :contentReference[oaicite:5]{index=5}
+    const s = window.__calcState||{}, c = s.cur||'€';
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const M = 48; // margin
+    let y = M;
+
+    const text = (t, x, yy, opts={}) => doc.text(String(t), x, yy, opts);
+    const cur = v => c + Number(v||0).toFixed(0);
+
+    // Header bar
+    doc.setFillColor(18,32,25);
+    doc.rect(0,0,pageWidth,84,'F');
+
+    // White badge behind logo so black logo is visible
+    doc.setFillColor(255,255,255);
+    doc.roundedRect(M-6,18,52,52,6,6,'F');
+
+    // Logo (data URL image) — jsPDF addImage supports data URLs :contentReference[oaicite:6]{index=6}
+    try { if (LOGO_DATA_URL) doc.addImage(LOGO_DATA_URL, 'PNG', M-4, 20, 48, 48); } catch(e){ /* ignore */ }
+
+    // Brand text
+    doc.setTextColor(230,245,239); doc.setFont('helvetica','bold'); doc.setFontSize(16);
+    text('ManeMap', M+52, 40);
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(180,215,205);
+    text('Horse Ownership Cost & Time Estimate', M+52, 60);
+
+    y = 92;
+
+    // Meta line
+    const country = $('country').value;
+    const regionName = $('regionDetail').selectedOptions[0]?.textContent || '';
+    const urbanLabel = $('urbanBand').selectedOptions[0]?.textContent || '';
+    doc.setTextColor(80,90,85); doc.setFontSize(10);
+    text(`Country: ${country}   •   Region: ${regionName}   •   Urbanity: ${urbanLabel}   •   Date: ${new Date().toLocaleDateString()}`, M, y);
+    y += 10;
+
+    // Summary table — AutoTable plugin (tables in jsPDF) :contentReference[oaicite:7]{index=7}
+    const summary = [
+      ['Monthly (pre-VAT)', cur(s.monthlyLikely||0)],
+      ['Monthly (with VAT)', cur(s.monthlyLikelyWithVat||0)],
+      ['Annual (pre-VAT)', cur(s.annualLikely||0)],
+      ['Annual (with VAT)', cur(s.annualLikelyWithVat||0)],
+      ['One-time', cur(s.oneTime||0)],
+      ['Reserve', cur(s.reserve||0)],
+      ['Time', (s.hours||0).toFixed(1) + ' h/week']
+    ];
+    doc.autoTable({
+      startY: y + 6,
+      head: [['Summary', 'Amount']],
+      body: summary,
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [54,177,153], textColor: [8,37,30], halign:'left' },
+      columnStyles: { 0:{cellWidth: 260}, 1:{halign:'right'} },
+      margin: { left: M, right: M }
+    });
+    y = doc.lastAutoTable.finalY + 14;
+
+    // Breakdown table
+    const breakdown = [
+      ['Board', cur(s.board||0)],
+      ['Farrier', cur(s.farrierM||0)],
+      ['Vet', cur(s.vetM||0)],
+      ['Dental', cur(s.dentalM||0)],
+      ['Hay', cur(s.hayCost||0)],
+      ['Training', cur(s.lessonsM||0)],
+      ['Misc', cur(s.miscM||0)]
+    ];
+    doc.autoTable({
+      startY: y,
+      head: [['Breakdown (monthly)', 'Amount']],
+      body: breakdown,
+      theme: 'striped',
+      styles: { fontSize: 10, cellPadding: 6 },
+      headStyles: { fillColor: [18,32,25], textColor: [230,245,239], halign:'left' },
+      columnStyles: { 0:{cellWidth: 260}, 1:{halign:'right'} },
+      margin: { left: M, right: M }
+    });
+    y = doc.lastAutoTable.finalY + 18;
+
+    // Ensure space for disclaimer; add page if near the bottom
+    if (y > pageHeight - 160) { doc.addPage(); y = M; }
+
+    // Disclaimer — large, unmissable
+    const disclaimerTitle = 'Disclaimer — Informational estimates only (no liability)';
+    const disclaimerBody = `This PDF is provided by ManeMap for educational budgeting. It is not a quote, offer, or financial advice. Costs vary by horse, provider, season, and location. Numbers here are estimates only and may be incomplete or outdated. You must verify prices locally before making decisions. ManeMap makes no warranties and accepts no liability for losses arising from use of these estimates.`;
+    doc.setTextColor(30,30,30); doc.setFont('helvetica','bold'); doc.setFontSize(11);
+    text(disclaimerTitle, M, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(90,90,90);
+    doc.text(disclaimerBody, M, y+14, { maxWidth: pageWidth - (M*2) });
+
+    // Footer with page numbers
+    const pageCount = doc.internal.getNumberOfPages();
+    for(let i=1;i<=pageCount;i++){
+      doc.setPage(i);
+      doc.setFontSize(9); doc.setTextColor(140,150,145);
+      const footer = `Page ${i}/${pageCount}  •  © ${new Date().getFullYear()} ManeMap`;
+      doc.text(footer, pageWidth - M, pageHeight - 20, { align: 'right' });
+    }
+
+    doc.save('horse-cost-estimate.pdf');
+  });
+
+  // ===== Init =====
+  (function init(){
+    fillRegionOptions();
+    $('country').dispatchEvent(new Event('change'));
+    $('includeTraining').checked=false; $('trainingFields').style.display='none';
+    compute();
+  })();
+})();
+</script>
+</body>
+</html>
