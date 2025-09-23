@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ManeMap · Horse Ownership Cost Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles/styles.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <header class="app-header" role="banner">
+        <div class="app-header__brand">
+          <span class="app-header__icon" aria-hidden="true">🐴</span>
+          <div>
+            <h1 class="app-title">ManeMap</h1>
+            <p class="app-subtitle">
+              Mix a regional preset with your own barn-specific adjustments to understand
+              the true cost of horse ownership.
+            </p>
+          </div>
+        </div>
+        <div class="app-header__actions">
+          <button type="button" class="button button--ghost" data-action="reset-all">
+            Reset dashboard
+          </button>
+        </div>
+      </header>
+
+      <main class="app-main" id="mainContent">
+        <section class="panel" aria-labelledby="presetTitle">
+          <div class="panel__header">
+            <h2 id="presetTitle">1 · Choose a preset</h2>
+            <p class="panel__summary">
+              Presets include average board, feed, routine care and regional costs. You can
+              layer optional adjustments afterwards.
+            </p>
+          </div>
+          <div class="panel__body">
+            <div class="grid grid--2">
+              <label class="field">
+                <span class="field__label">Region</span>
+                <select id="country" class="field__input" aria-describedby="regionHint"></select>
+                <small id="regionHint" class="field__hint">Country or state level presets.</small>
+              </label>
+              <label class="field">
+                <span class="field__label">Scenario</span>
+                <select id="scenario" class="field__input" aria-describedby="scenarioHint"></select>
+                <small id="scenarioHint" class="field__hint"
+                  >DIY, full service and competitive riding combinations.</small
+                >
+              </label>
+            </div>
+            <div class="grid grid--3 grid--stack">
+              <label class="field field--checkbox">
+                <input id="withTax" type="checkbox" checked />
+                <span>Use values that include tax</span>
+              </label>
+              <label class="field">
+                <span class="field__label">Currency</span>
+                <input id="currency" class="field__input" value="€" inputmode="text" />
+                <small class="field__hint">Detected from the preset. Override to display another symbol.</small>
+              </label>
+              <label class="field">
+                <span class="field__label">Show values as</span>
+                <select id="displayMode" class="field__input">
+                  <option value="monthly" selected>Monthly totals</option>
+                  <option value="annual">Annual totals</option>
+                </select>
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="adjustmentsTitle">
+          <div class="panel__header">
+            <h2 id="adjustmentsTitle">2 · Optional adjustments</h2>
+            <p class="panel__summary">
+              Enter local barn specifics that differ from the preset. Every change is saved in your
+              browser so you can revisit it later.
+            </p>
+          </div>
+          <div class="panel__body adjustments">
+            <nav class="adjustments__nav" aria-label="Adjustment sections">
+              <button class="tag tag--active" data-tab="feed">Feed &amp; Forage</button>
+              <button class="tag" data-tab="care">Care &amp; Vet</button>
+              <button class="tag" data-tab="lifestyle">Lifestyle &amp; Competition</button>
+              <button class="tag" data-tab="property">Home kept horse</button>
+            </nav>
+
+            <div class="adjustments__panel" data-tab-panel="feed">
+              <h3>Feed &amp; Forage</h3>
+              <p class="panel__summary">
+                Estimate hay, grain and supplement costs. Use the hay calculator when hay is not part of the board fee.
+              </p>
+              <div class="divider"></div>
+              <div class="grid grid--3">
+                <label class="field field--checkbox">
+                  <input id="incHay" type="checkbox" />
+                  <span>Board already includes hay</span>
+                </label>
+                <label class="field field--checkbox">
+                  <input id="useHayModule" type="checkbox" checked />
+                  <span>Enable hay calculator</span>
+                </label>
+                <output id="haySummary" class="callout" role="status">Hay cost: 0</output>
+              </div>
+
+              <div id="hayFields" class="stack">
+                <div class="grid grid--4">
+                  <label class="field">
+                    <span class="field__label">Horse weight (kg)</span>
+                    <input id="horseKg" class="field__input" type="number" value="550" min="200" max="900" />
+                  </label>
+                  <label class="field">
+                    <span class="field__label">Forage % BW / day</span>
+                    <input id="pctBW" class="field__input" type="number" step="0.1" value="2.0" min="1" max="4" />
+                  </label>
+                  <label class="field">
+                    <span class="field__label">Bale weight (kg)</span>
+                    <input id="baleKg" class="field__input" type="number" value="20" min="5" />
+                  </label>
+                  <label class="field">
+                    <span class="field__label">Price per bale</span>
+                    <input id="balePrice" class="field__input" type="number" value="0" min="0" />
+                  </label>
+                </div>
+                <div class="grid grid--4 grid--stack">
+                  <label class="field">
+                    <span class="field__label">Hay waste</span>
+                    <select id="wastePreset" class="field__input">
+                      <option value="20">Loose (20%)</option>
+                      <option value="5" selected>Slow feed net (5%)</option>
+                      <option value="custom">Custom</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span class="field__label">Custom waste %</span>
+                    <input id="wastePct" class="field__input" type="number" value="5" min="0" max="60" />
+                  </label>
+                  <label class="field">
+                    <span class="field__label">Pasture months / year</span>
+                    <input id="pastureMonths" class="field__input" type="number" value="4" min="0" max="12" />
+                  </label>
+                  <label class="field">
+                    <span class="field__label">Forage from pasture (%)</span>
+                    <input id="pasturePct" class="field__input" type="number" value="50" min="0" max="100" />
+                  </label>
+                </div>
+              </div>
+
+              <div class="grid grid--2">
+                <label class="field">
+                  <span class="field__label">Grain or balancer (monthly)</span>
+                  <input id="grainMonthly" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Supplements &amp; salt (monthly)</span>
+                  <input id="suppMonthly" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+              </div>
+
+              <h4>Bedding (if not included)</h4>
+              <div class="grid grid--3 grid--stack">
+                <label class="field field--checkbox">
+                  <input id="incBedding" type="checkbox" />
+                  <span>Bedding included in board</span>
+                </label>
+                <label class="field">
+                  <span class="field__label">Units per week</span>
+                  <input id="beddingQtyWeek" class="field__input" type="number" value="0" min="0" step="0.1" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Price per unit</span>
+                  <input id="beddingUnitPrice" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+              </div>
+            </div>
+
+            <div class="adjustments__panel" data-tab-panel="care" hidden>
+              <h3>Routine care, farrier &amp; medical</h3>
+              <div class="divider"></div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Farrier cadence (weeks)</span>
+                  <input id="farrierWeeks" class="field__input" type="number" value="8" min="4" max="12" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Base price per visit</span>
+                  <input id="farrierVisit" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Extras per visit</span>
+                  <input id="farrierExtras" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+              </div>
+              <div class="grid grid--2 grid--stack">
+                <label class="field">
+                  <span class="field__label">Vet call-out (annual)</span>
+                  <input id="vetCallAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Dental call-out (annual)</span>
+                  <input id="dentalCallAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Dental exam / float (annual)</span>
+                  <input id="dentalAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Core vaccinations (annual)</span>
+                  <input id="vaccCore" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Risk-based vaccinations (annual)</span>
+                  <input id="vaccRisk" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Travel compliance (annual)</span>
+                  <input id="vaccTravel" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">FEC tests per year</span>
+                  <input id="fecalCount" class="field__input" type="number" value="2" min="0" max="12" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Price per FEC test</span>
+                  <input id="fecalPrice" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+              </div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Dewormers (annual)</span>
+                  <input id="dewormerAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Blanket care (annual)</span>
+                  <input id="blanketAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Fly control (annual)</span>
+                  <input id="flyAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Bodywork (annual)</span>
+                  <input id="bodyworkAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Saddle fitting (annual)</span>
+                  <input id="saddleAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Insurance (annual)</span>
+                  <div class="grid grid--2 nested-grid">
+                    <input id="insLiability" class="field__input" type="number" value="0" min="0" placeholder="Liability" />
+                    <input id="insMedical" class="field__input" type="number" value="0" min="0" placeholder="Medical" />
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="adjustments__panel" data-tab-panel="lifestyle" hidden>
+              <h3>Lifestyle, transport &amp; competition</h3>
+              <div class="divider"></div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field field--checkbox">
+                  <input id="toggleHaul" type="checkbox" />
+                  <span>I haul to other facilities</span>
+                </label>
+                <label class="field field--checkbox">
+                  <input id="toggleCompete" type="checkbox" />
+                  <span>Competing</span>
+                </label>
+                <label class="field">
+                  <span class="field__label">Trips per year</span>
+                  <input id="tripsYear" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Fuel &amp; tolls per trip</span>
+                  <input id="fuelPerTrip" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Arena / day-use per trip</span>
+                  <input id="arenaPerTrip" class="field__input" type="number" value="0" min="0" step="0.01" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Shows per year</span>
+                  <input id="showsYear" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Entries + stabling per show</span>
+                  <input id="entriesPerShow" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Trainer day fees per show</span>
+                  <input id="trainerPerShow" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Transport per show</span>
+                  <input id="transportPerShow" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--2 grid--stack">
+                <label class="field">
+                  <span class="field__label">Memberships (annual)</span>
+                  <input id="membershipsAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Consumables (annual)</span>
+                  <input id="consumablesAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--1">
+                <label class="field">
+                  <span class="field__label">End-of-life &amp; retirement fund (annual)</span>
+                  <input id="eolRetAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+            </div>
+
+            <div class="adjustments__panel" data-tab-panel="property" hidden>
+              <h3>Home kept horse · property upkeep</h3>
+              <div class="divider"></div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field field--checkbox">
+                  <input id="toggleHome" type="checkbox" />
+                  <span>Include property maintenance</span>
+                </label>
+                <label class="field">
+                  <span class="field__label">Fencing repair (annual)</span>
+                  <input id="fencingAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Pasture seed / fertilizer (annual)</span>
+                  <input id="pastureAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+              </div>
+              <div class="grid grid--3 grid--stack">
+                <label class="field">
+                  <span class="field__label">Water &amp; electric (annual)</span>
+                  <input id="utilitiesAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <label class="field">
+                  <span class="field__label">Manure removal (annual)</span>
+                  <input id="manureAnnual" class="field__input" type="number" value="0" min="0" />
+                </label>
+                <div class="field field--info">
+                  <span class="field__label">Tip</span>
+                  <p class="field__hint">
+                    Include amortised equipment costs (tractors, arena drag) in manure or fencing if relevant.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="resultsTitle">
+          <div class="panel__header">
+            <h2 id="resultsTitle">3 · Results &amp; exports</h2>
+            <p class="panel__summary">
+              Compare preset baseline with your custom adjustments. Toggle between monthly and annual view or export the report.
+            </p>
+          </div>
+          <div class="panel__body">
+            <div id="chipList" class="chip-list" role="list"></div>
+
+            <div class="totals" role="status" aria-live="polite">
+              <div class="totals__row">
+                <span>Preset</span>
+                <output id="presetTotal" class="totals__value">–</output>
+              </div>
+              <div class="totals__row">
+                <span>Adjustments</span>
+                <output id="adjTotal" class="totals__value">–</output>
+              </div>
+              <div class="totals__row totals__row--accent">
+                <span>Combined</span>
+                <output id="combinedTotal" class="totals__value">–</output>
+              </div>
+            </div>
+
+            <div class="grid grid--2 grid--stack">
+              <figure class="chart-card">
+                <canvas id="presetChart" aria-label="Preset cost distribution" role="img"></canvas>
+              </figure>
+              <figure class="chart-card">
+                <canvas id="adjustmentChart" aria-label="Adjustment cost distribution" role="img"></canvas>
+              </figure>
+            </div>
+
+            <details class="accordion">
+              <summary>View detailed breakdown</summary>
+              <div class="divider"></div>
+              <div class="grid grid--2 grid--stack">
+                <div>
+                  <h3 class="table-title">Preset</h3>
+                  <table id="presetTable" class="data-table">
+                    <thead>
+                      <tr><th>Category</th><th class="numeric">Monthly</th><th class="numeric">Annual</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+                <div>
+                  <h3 class="table-title">Adjustments</h3>
+                  <table id="adjustmentTable" class="data-table">
+                    <thead>
+                      <tr><th>Adjustment</th><th class="numeric">Monthly</th><th class="numeric">Annual</th></tr>
+                    </thead>
+                    <tbody></tbody>
+                  </table>
+                </div>
+              </div>
+            </details>
+
+            <div class="button-row">
+              <button type="button" class="button" data-action="download-csv">Download CSV</button>
+              <button type="button" class="button" data-action="download-pdf">Download PDF</button>
+            </div>
+            <p class="footnote">Last updated: <span id="lastUpdated">–</span></p>
+          </div>
+        </section>
+      </main>
+
+      <footer class="app-footer" role="contentinfo">
+        <p>
+          ManeMap is an informational planning tool. Validate prices with your local barn and vet team.
+          United States presets include BEA regional price parity adjustments where available.
+        </p>
+      </footer>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/3.0.2/jspdf.umd.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+    <script type="module" src="scripts/app.js"></script>
+  </body>
+</html>
