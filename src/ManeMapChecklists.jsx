@@ -30,12 +30,12 @@ const HTML1 = multiline(function () {/*
   }
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen,Ubuntu,Cantarell,sans-serif;background:var(--bg-gradient);color:var(--text-primary);line-height:1.6;padding:20px;min-height:100vh}
-  .calculator-container{max-width:1200px;margin:0 auto;background:var(--bg-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:hidden}
-  .header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;padding:32px;text-align:center}
+  .calculator-container{max-width:1200px;margin:0 auto;background:var(--bg-primary);border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);overflow:visible}
+  .header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;padding:32px;text-align:center;border-radius:var(--radius-lg) var(--radius-lg) 0 0}
   .brand{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;width:100%;margin-bottom:4px;}
   .brand h1{grid-column:2;justify-self:center;font-size:var(--brand-title-size);font-weight:700;line-height:1.05;text-shadow:0 2px 4px rgb(0 0 0 / 0.1);white-space:nowrap;}
   .badge{display:inline-flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.2);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.3);border-radius:999px;padding:10px 18px;font-size:1rem;font-weight:600;letter-spacing:.2px;margin-top:12px}
-  .content{padding:32px}
+  .content{padding:32px;border-radius:0 0 var(--radius-lg) var(--radius-lg)}
   .notice{border:1px solid var(--notice-border);background:var(--notice-bg);padding:12px 14px;border-radius:10px;margin-bottom:20px;font-size:0.95rem}
   .card{background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius);padding:24px;margin-bottom:24px;box-shadow:var(--shadow);transition:all .2s ease;break-inside:auto;page-break-inside:auto}
   .card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px)}
@@ -575,8 +575,8 @@ const HTML2 = multiline(function () {/*
     .card{ padding:18px }
     li.group{ flex-direction:column; gap:10px; padding:10px }
     .parent{ width:18px; height:18px; margin-top:0 }
-    .sub{ margin:8px 0 0 0; display:flex; flex-direction:column; gap:8px }
-    label.subitem{ align-items:flex-start; padding:10px; }
+    .sub{ margin:8px 0 0 0; display:flex; flex-direction:column; gap:8px; width:100% }
+    label.subitem{ align-items:flex-start; padding:10px; width:100%; box-sizing:border-box }
     label.subitem span{ display:block; line-height:1.43; word-break:break-word }
   }
   @media print{.toolbar,.notice{display:none !important} body{background:#fff}}
@@ -880,7 +880,7 @@ const HTML2 = multiline(function () {/*
 export default function ManeMapChecklists() {
   const [tab, setTab] = useState("planner")
   const iframeRef = useRef(null)
-  const [height, setHeight] = useState(900)
+  const [height, setHeight] = useState(600)
 
   const activeHtml = useMemo(() => (tab === "planner" ? HTML1 : HTML2), [tab])
   const title = tab === "planner" ? "Equine Budget Planner" : "Buyer & Stable Checklist"
@@ -889,8 +889,8 @@ export default function ManeMapChecklists() {
     function onMessage(e) {
       const data = e?.data
       if (data && data.type === "MM_IFRAME_HEIGHT") {
-        const h = Number(data.h) || 900
-        setHeight(Math.max(700, Math.min(h, 6000)))
+        const h = Math.round(Number(data.h) || 600)
+        setHeight(Math.max(240, Math.min(h, 6000)))
       }
     }
     window.addEventListener("message", onMessage)
@@ -899,7 +899,7 @@ export default function ManeMapChecklists() {
 
   useEffect(() => {
     const iframe = iframeRef.current
-    setHeight(900)
+    setHeight(600)
     const ping = () => {
       try {
         iframe?.contentWindow?.postMessage({ type: "MM_PING_HEIGHT" }, "*")
@@ -917,20 +917,32 @@ export default function ManeMapChecklists() {
     }
   }, [tab])
 
+  const buttonBaseStyle = {
+    padding: "9px 18px",
+    borderRadius: 12,
+    cursor: "pointer",
+    fontWeight: 600,
+    fontSize: "16px",
+    lineHeight: "22px",
+    fontFamily: "Inter, 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+    WebkitFontSmoothing: "antialiased",
+    MozOsxFontSmoothing: "grayscale",
+    textRendering: "optimizeLegibility",
+    transition: "background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease",
+  }
+
   return (
     <div style={{ width: "100%", display: "flex", flexDirection: "column" }}>
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 14, justifyContent: "center" }}>
         <button
           type="button"
           onClick={() => setTab("planner")}
           style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            cursor: "pointer",
-            border: `1px solid ${tab === "planner" ? "#295E2B" : "rgba(0,0,0,0.15)"}`,
+            ...buttonBaseStyle,
+            border: `1.5px solid ${tab === "planner" ? "#295E2B" : "rgba(0,0,0,0.18)"}`,
             background: tab === "planner" ? "#295E2B" : "#fff",
-            color: tab === "planner" ? "#fff" : "#000",
-            fontWeight: 700,
+            color: tab === "planner" ? "#fff" : "#1e293b",
+            boxShadow: tab === "planner" ? "0 8px 20px rgba(41,94,43,0.25)" : "0 2px 8px rgba(15,23,42,0.08)",
           }}
         >
           Budget Planner
@@ -939,13 +951,11 @@ export default function ManeMapChecklists() {
           type="button"
           onClick={() => setTab("buyer")}
           style={{
-            padding: "8px 12px",
-            borderRadius: 10,
-            cursor: "pointer",
-            border: `1px solid ${tab === "buyer" ? "#295E2B" : "rgba(0,0,0,0.15)"}`,
+            ...buttonBaseStyle,
+            border: `1.5px solid ${tab === "buyer" ? "#295E2B" : "rgba(0,0,0,0.18)"}`,
             background: tab === "buyer" ? "#295E2B" : "#fff",
-            color: tab === "buyer" ? "#fff" : "#000",
-            fontWeight: 700,
+            color: tab === "buyer" ? "#fff" : "#1e293b",
+            boxShadow: tab === "buyer" ? "0 8px 20px rgba(41,94,43,0.25)" : "0 2px 8px rgba(15,23,42,0.08)",
           }}
         >
           Buyer &amp; Stable Checklist
