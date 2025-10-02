@@ -322,7 +322,7 @@ const HTML1 = multiline(function () {/*
     }
 
     function updateEstimates(){
-      elements.currency.value = CURRENCY_BY_COUNTRY[state.homeCountry];
+      elements.currency.value = CURRENCY_BY_COUNTRY[state.homeCountry] || "€";
       const vat = VAT_DEFAULTS[state.homeCountry] || { apply:false, rate:0 };
       elements.applyTax.value = vat.apply ? "yes" : "no";
       elements.taxRate.value  = vat.rate;
@@ -443,7 +443,7 @@ const HTML1 = multiline(function () {/*
           }
         }
       }catch(err){
-        console.warn("Could not load cost JSON; using modeled estimates.", err);
+        // Swallow fetch errors quietly so the component doesn't spam console warnings in Framer
       }finally{
         initDisclaimerLink();
         initPdfButton();
@@ -826,7 +826,7 @@ const HTML2 = multiline(function () {/*
           const a=document.createElement('a'); a.href=url; a.download=sanitize(fname); document.body.appendChild(a); a.click(); a.remove();
           URL.revokeObjectURL(url);
         }catch(e){
-          console.warn('PDF export failed; using print()', e);
+          // Gracefully fall back without flooding the console in the hosted environment
           window.print();
         }finally{
           btnPdf.disabled=false; spinner.remove(); label.textContent='Download PDF';
@@ -878,9 +878,10 @@ const HTML2 = multiline(function () {/*
    - Pings child after tab switch
    ========================================== */
 export default function ManeMapChecklists() {
+  const BASE_HEIGHT = 520
   const [tab, setTab] = useState("planner")
   const iframeRef = useRef(null)
-  const [height, setHeight] = useState(600)
+  const [height, setHeight] = useState(BASE_HEIGHT)
 
   const activeHtml = useMemo(() => (tab === "planner" ? HTML1 : HTML2), [tab])
   const title = tab === "planner" ? "Equine Budget Planner" : "Buyer & Stable Checklist"
@@ -889,17 +890,17 @@ export default function ManeMapChecklists() {
     function onMessage(e) {
       const data = e?.data
       if (data && data.type === "MM_IFRAME_HEIGHT") {
-        const h = Math.round(Number(data.h) || 600)
-        setHeight(Math.max(240, Math.min(h, 6000)))
+        const h = Math.round(Number(data.h) || BASE_HEIGHT)
+        setHeight(Math.max(320, Math.min(h, 6000)))
       }
     }
     window.addEventListener("message", onMessage)
     return () => window.removeEventListener("message", onMessage)
-  }, [])
+  }, [BASE_HEIGHT])
 
   useEffect(() => {
     const iframe = iframeRef.current
-    setHeight(600)
+    setHeight(BASE_HEIGHT)
     const ping = () => {
       try {
         iframe?.contentWindow?.postMessage({ type: "MM_PING_HEIGHT" }, "*")
@@ -915,16 +916,21 @@ export default function ManeMapChecklists() {
       clearTimeout(t2)
       clearTimeout(t3)
     }
-  }, [tab])
+  }, [tab, BASE_HEIGHT])
 
   const buttonBaseStyle = {
-    padding: "9px 18px",
+    padding: "10px 20px",
+    minHeight: 44,
     borderRadius: 12,
     cursor: "pointer",
-    fontWeight: 600,
+    fontWeight: 650,
     fontSize: "16px",
-    lineHeight: "22px",
-    fontFamily: "Inter, 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+    lineHeight: "1.2",
+    fontFamily: "'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    letterSpacing: "0.01em",
     WebkitFontSmoothing: "antialiased",
     MozOsxFontSmoothing: "grayscale",
     textRendering: "optimizeLegibility",
@@ -970,6 +976,7 @@ export default function ManeMapChecklists() {
         sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-downloads"
         style={{
           width: "100%",
+          display: "block",
           height,
           border: "1px solid rgba(0,0,0,0.1)",
           borderRadius: 12,
